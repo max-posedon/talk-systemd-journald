@@ -1,0 +1,171 @@
+\documentclass{beamer}
+\usepackage[russian,english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{verbatim}
+
+\begin{document}
+
+\title{systemd journal or\\computer readable logs}
+\author{Maksim 'max\_posedon' Melnikau}
+\institute{Linux Mobile hobbyist\\World of Tanks developer}
+\date{\today}
+\frame{\titlepage}
+
+\section{Preface}
+
+\begin{frame}[fragile]
+    \frametitle{the question}
+    Who reads logs?
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{generating logs}
+    \begin{itemize}
+    \item part of context information is lost
+    \item lossy human language
+    \item not useful for early boot and shutdown
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{reading logs}
+    \begin{itemize}
+    \item no structured format is defined
+    \item parsing and processing is messy
+    \item many key log operations have a complexity of O(n)
+    \item binary data cannot be logged
+    \item security questions
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Linux logs}
+    \begin{itemize}
+    \item syslog*
+    \item utmp/wtmp
+    \item kernel logs
+    \item firmware logs
+    \item multiple application-specific log formats
+    \item /dev/null
+    \end{itemize}
+\end{frame}
+
+\section{How to log}
+
+\begin{frame}[fragile]
+    \frametitle{the log item}
+    \begin{itemize}
+    \item split message for human/for machine
+    \item UUID as message type/id
+    \item "business" data as key-value dict
+    \item attach all system information
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{example.c}
+    \begin{verbatim}
+#include <stdlib.h>
+#include <systemd/sd-journal.h>
+int main() {
+    int i=0, j=0;
+    while(i<10 && j<10) {
+        random()&1 ? ++i : ++j;
+        sd_journal_send(
+            "MESSAGE=(%d,%d)", i, j,
+            "MESSAGE_ID=51141ddad48f4924aef970b1eab2af42",
+            "I=%d", i, 
+            "J=%d", j,
+            NULL
+        );
+    }
+    return 0;
+}
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{systemd/sd-journal.h}
+    \begin{verbatim}
+int sd_journal_print(int piority, const char *format, ...)
+    __attribute__ ((format (printf, 2, 3)));
+
+int sd_journal_printv(
+    int priority, const char *format, va_list ap);
+
+int sd_journal_send(const char *format, ...)
+    __attribute__ ((sentinel));
+
+int sd_journal_sendv(const struct iovec *iov, int n);
+
+int sd_journal_stream_fd(const char *identifier, 
+    int priority, int level_prefix);
+    \end{verbatim}
+\end{frame}
+
+\section{Reading logs}
+
+\begin{frame}[fragile]
+    \frametitle{the logs}
+    \begin{itemize}
+    \item different formats
+    \item different data
+    \item efficient search
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{systemd-journalctl -o export -f J=2 -n 1}
+    \begin{verbatim}
+.realtime=1337895699642000
+.monotonic=27122021981
+.boot_id=b149fa547201419f93dcfaa7a214dc8b
+MESSAGE=(5,2)
+MESSAGE_ID=51141ddad48f4924aef970b1eab2af42
+I=5
+J=2
+_TRANSPORT=journal
+_PID=9334
+_UID=1001
+_GID=1001
+_COMM=example
+_EXE=/home/max_posedon/systemd-journald/example
+_CMDLINE=./example
+_SYSTEMD_CGROUP=/system/kdm@.service/tty7
+_SYSTEMD_UNIT=kdm@tty7.service
+_SOURCE_REALTIME_TIMESTAMP=1337895699633622
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{systemd-journalctl \_SYSTEMD\_UNIT=dbus.service}
+    \begin{verbatim}
+_TRANSPORT=stdout
+PRIORITY=6
+SYSLOG_FACILITY=3
+SYSLOG_IDENTIFIER=dbus-daemon
+MESSAGE=**** pci IGNORING ADD \
+    /sys/devices/pci0000:00/0000:00:1c.0/0000:07:00.0
+_PID=1526
+_UID=0
+_GID=0
+_COMM=dbus-daemon
+_EXE=/usr/bin/dbus-daemon
+_CMDLINE=/usr/bin/dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation
+_SYSTEMD_CGROUP=/system/dbus.service
+_SYSTEMD_UNIT=dbus.service
+_BOOT_ID=f9c7b9b79e584d31a5fe238fe4de16a0
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{the info}
+    \begin{itemize}
+    \item Maksim 'max\_posedon' Melnikau maxposedon@gmail.com
+    \item http://www.freedesktop.org/wiki/Software/systemd
+    \item https://docs.google.com/document/pub?
+        id=1IC9yOXj7j6cdLLxWEBAGRL6wl97tFxgjLUEHIX3MSTs
+    \end{itemize}
+\end{frame}
+
+\end{document}
